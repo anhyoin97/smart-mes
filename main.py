@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Body, Request
+from fastapi import FastAPI, Body, Request, Form
 import service
 
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 app = FastAPI(
@@ -296,3 +296,98 @@ def complete_work_order(work_order_id: int):
         "work_order_id": work_order_id,
         "status": "completed"
     }
+
+@app.get("/test", response_class=HTMLResponse)
+def test_page(request: Request):
+
+    return templates.TemplateResponse(
+        request=request,
+        name="test.html",
+        context={
+            "title": "MES",
+            "message": "Web MES",
+            "url": "http://kmu.ac.kr"
+        }
+    )
+
+# ============================================================
+# HTML용 제품 조회
+# ============================================================
+
+@app.get("/products", response_class=HTMLResponse)
+def products_page(request: Request):
+
+    result = service.list_products()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="products.html",
+        context={
+            "products": result
+        }
+    )
+
+# ============================================================
+# HTML용 제품 추가
+# ============================================================
+
+@app.post("/products")
+def create_product_page(
+    product_id: str = Form(...),
+    product_name: str = Form(...)
+):
+    service.create_product(product_id, product_name)
+
+    return RedirectResponse(
+        url="/products",
+        status_code=303
+    )
+
+# ============================================================
+# HTML용 생산실적 조회
+# ============================================================
+
+@app.get("/production-records", response_class=HTMLResponse)
+def production_records_page(request: Request):
+    
+    # 생산실적 데이터 조회
+    production = service.list_production_records()
+    
+    # 작업지시 데이터 조회
+    orders = service.list_work_orders()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="production.html",
+        context={
+            "production": production,
+            "orders": orders
+        }
+    )
+
+# ============================================================
+# HTML용 생산실적 등록
+# ============================================================
+
+@app.post("/production-records")
+def create_production_record_page(
+    work_order_id: int = Form(...),
+    production_date: str = Form(...),
+    produced_qty: int = Form(...)
+):
+    production_record_id = service.create_production_record(
+        work_order_id,
+        production_date,
+        produced_qty
+    )
+
+    if production_record_id is None:
+        return RedirectResponse(
+            url="/production-records",
+            status_code=303
+        )
+
+    return RedirectResponse(
+        url="/production-records",
+        status_code=303
+    )

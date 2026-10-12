@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}생산실적 관리{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">생산실적 관리</h2>
+
+<!-- 생산실적 등록 영역 -->
+<div class="card mb-4">
+    <div class="card-header">생산실적 등록</div>
+    <div class="card-body">
+        <form method="post" action="/production-records">
+            <div class="mb-3">
+                <label class="form-label">작업지시</label>
+                <select name="work_order_id" class="form-select" required>
+                    <option value="">작업지시 선택</option>
+                    {% for order in orders %}
+                    <option value="{{ order.work_order_id }}">
+                        {{ order.work_order_id }} -
+                        {{ order.line_id }} /
+                        {{ order.product_id }}
+                        (목표 {{ order.target_qty }}개)
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">생산일자</label>
+                <input type="date" name="production_date"
+                       class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">생산수량</label>
+                <input type="number" name="produced_qty"
+                       min="0" class="form-control" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                생산실적 등록
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- 생산실적 목록 영역 -->
+<div class="card">
+    <div class="card-header">생산실적 목록</div>
+    <div class="card-body">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>번호</th>
+                    <th>생산일자</th>
+                    <th>작업지시</th>
+                    <th>생산라인</th>
+                    <th>제품</th>
+                    <th>목표수량</th>
+                    <th>생산수량</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in production %}
+                <tr>
+                    <td>{{ record.production_record_id }}</td>
+                    <td>{{ record.production_date }}</td>
+                    <td>{{ record.work_order_id }}</td>
+                    <td>{{ record.line_name }}</td>
+                    <td>{{ record.product_name }}</td>
+                    <td>{{ record.target_qty }}</td>
+                    <td>{{ record.produced_qty }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

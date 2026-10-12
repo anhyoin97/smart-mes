@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}제품 관리{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">제품 관리</h2>
+
+<!-- 제품 등록 영역 -->
+<div class="card mb-4">
+    <div class="card-header">제품 등록</div>
+    <div class="card-body">
+        <form method="post" action="/products">
+            <div class="mb-3">
+                <label class="form-label">제품 ID</label>
+                <input type="text" name="product_id"
+                       class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">제품명</label>
+                <input type="text" name="product_name"
+                       class="form-control" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                제품 등록
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- 제품 목록 영역 -->
+<div class="card">
+    <div class="card-header">제품 목록</div>
+    <div class="card-body">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>제품 ID</th>
+                    <th>제품명</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td>{{ product.product_id }}</td>
+                    <td>{{ product.product_name }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
