@@ -1,0 +1,214 @@
+
+{% extends "base.html" %}
+
+{% block title %}생산라인 관리{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">생산라인 관리</h2>
+
+<!-- 생산라인 등록 영역 -->
+<div class="card mb-4">
+    <div class="card-header">생산라인 등록</div>
+    <div class="card-body">
+        <form method="post" action="/lines">
+            <div class="mb-3">
+                <label class="form-label">생산라인ID</label>
+                <input type="text" name="line_id"
+                       class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">생산라인명</label>
+                <input type="text" name="line_name"
+                       class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">상태</label>
+                <select name="status" class="form-select" required>
+                    <option value="running">running</option>
+                    <option value="stopped">stopped</option>
+                    <option value="maintenance">maintenance</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                생산라인 등록
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- 생산라인 목록 영역 -->
+<div class="card">
+    <div class="card-header">생산라인 목록</div>
+    <div class="card-body">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>생산라인ID</th>
+                    <th>생산라인명</th>
+                    <th>상태</th>
+                    <th>관리</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in lines %}
+                <tr>
+                    <td>{{ record.line_id }}</td>
+
+                    <td>
+                        <!-- 조회 모드 -->
+                        <span class="view-mode">
+                            {{ record.line_name }}
+                        </span>
+
+                        <!-- 수정 모드 -->
+                        <input type="text"
+                               name="line_name"
+                               value="{{ record.line_name }}"
+                               class="form-control edit-mode d-none">
+                    </td>
+
+                    <td>
+                        <!-- 조회 모드 -->
+                        <span class="view-mode">
+                            {{ record.status }}
+                        </span>
+
+                        <!-- 수정 모드 -->
+                        <select name="status"
+                                class="form-select edit-mode d-none">
+                            <option value="running"
+                                {% if record.status == 'running' %}selected{% endif %}>
+                                running
+                            </option>
+                            <option value="stopped"
+                                {% if record.status == 'stopped' %}selected{% endif %}>
+                                stopped
+                            </option>
+                            <option value="maintenance"
+                                {% if record.status == 'maintenance' %}selected{% endif %}>
+                                maintenance
+                            </option>
+                        </select>
+                    </td>
+
+                    <td>
+                        <button type="button"
+                                class="btn btn-primary btn-sm view-mode"
+                                onclick="editLine(this)">
+                            수정
+                        </button>
+
+                        <button type="button"
+                                class="btn btn-success btn-sm edit-mode d-none"
+                                data-line-id="{{ record.line_id }}"
+                                onclick="saveLine(this)">
+                            저장
+                        </button>
+
+                        <button type="button"
+                                class="btn btn-secondary btn-sm edit-mode d-none"
+                                onclick="cancelEdit(this)">
+                            취소
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // 수정 버튼 클릭
+    function editLine(button) {
+        const row = button.closest("tr");
+
+        row.querySelectorAll(".view-mode").forEach(el => {
+            el.classList.add("d-none");
+        });
+
+        row.querySelectorAll(".edit-mode").forEach(el => {
+            el.classList.remove("d-none");
+        });
+    }
+
+    // 취소 버튼 클릭
+    function cancelEdit(button) {
+        const row = button.closest("tr");
+
+        // 기존 값으로 복구
+        row.querySelector('[name="line_name"]').value =
+            row.querySelector("td:nth-child(2) .view-mode")
+               .textContent.trim();
+
+        row.querySelector('[name="status"]').value =
+            row.querySelector("td:nth-child(3) .view-mode")
+               .textContent.trim();
+
+        row.querySelectorAll(".edit-mode").forEach(el => {
+            el.classList.add("d-none");
+        });
+
+        row.querySelectorAll(".view-mode").forEach(el => {
+            el.classList.remove("d-none");
+        });
+    }
+
+    // 저장 버튼 클릭 (PATCH)
+    async function saveLine(button) {
+        const row = button.closest("tr");
+        const lineId = button.dataset.lineId;
+
+        const lineName = row.querySelector(
+            '[name="line_name"]'
+        ).value.trim();
+
+        const status = row.querySelector(
+            '[name="status"]'
+        ).value;
+
+        if (!lineName) {
+            alert("생산라인명을 입력해주세요.");
+            return;
+        }
+
+        button.disabled = true;
+
+        try {
+            const response = await fetch(
+                `/lines/${encodeURIComponent(lineId)}`,
+                {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        line_name: lineName,
+                        status: status
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(
+                    error.detail || "수정 실패"
+                );
+            }
+
+            alert("생산라인 수정 완료!");
+            location.reload();
+
+        } catch (error) {
+            console.error(error);
+            alert("수정 실패: " + error.message);
+        } finally {
+            button.disabled = false;
+        }
+    }
+</script>
+
+{% endblock %}

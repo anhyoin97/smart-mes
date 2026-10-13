@@ -391,3 +391,58 @@ def create_production_record_page(
         url="/production-records",
         status_code=303
     )
+
+# ============================================================
+# HTML용 생산라인 조회
+# ============================================================
+
+@app.get("/lines", response_class=HTMLResponse)
+def lines_page(request: Request):
+
+    # 생산라인 데이터 조회
+    lines = service.list_lines()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="lines.html",
+        context={
+            "lines": lines
+        }
+    )
+
+# ============================================================
+# HTML용 생산라인 등록
+# ============================================================
+    
+@app.post("/lines")
+def create_line_page(
+    line_id: str = Form(...),
+    line_name: str = Form(...),
+    status: str = Form(...)
+):
+    service.create_line(line_id, line_name, status)
+
+    return RedirectResponse(
+        url="/lines",
+        status_code=303
+    )
+
+# ============================================================
+# HTML용 생산라인 수정
+# ============================================================
+@app.patch("/lines/{line_id}")
+def update_line_page(
+    line_id: str,
+    line_name: str = Body(...),
+    status: str = Body(...)
+):
+    result = service.update_line(
+        line_id,
+        line_name,
+        status
+    )
+
+    return {
+        "message": "생산라인 수정 완료",
+        "line_id": line_id
+    }
