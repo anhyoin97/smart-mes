@@ -1,0 +1,125 @@
+
+{% extends "base.html" %}
+
+{% block title %}작업지시 관리{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">작업지시 관리</h2>
+
+<!-- 작업지시 등록 영역 -->
+<div class="card mb-4">
+    <div class="card-header">작업지시 등록</div>
+    <div class="card-body">
+        <form method="post" action="/work-orders">
+            <div class="mb-3">
+                <label class="form-label">생산라인</label>
+                <select name="line_id" class="form-select" required>
+                    <option value="">생산라인 선택</option>
+                    {% for line in lines %}
+                    <option value="{{ line.line_id }}">
+                        {{ line.line_name }} ({{ line.line_id }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">제품</label>
+                <select name="product_id" class="form-select" required>
+                    <option value="">제품 선택</option>
+                    {% for product in products %}
+                    <option value="{{ product.product_id }}">
+                        {{ product.product_name }} ({{ product.product_id }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">목표수량</label>
+                <input type="number" name="target_qty" min="1"
+                       class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">계획 시작시각</label>
+                <input type="datetime-local" name="planned_start_at"
+                       class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">완료 예정시각</label>
+                <input type="datetime-local" name="due_at"
+                       class="form-control" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                작업지시 등록
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- 작업지시 목록 영역 -->
+<div class="card">
+    <div class="card-header">작업지시 목록</div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>번호</th>
+                        <th>생산라인</th>
+                        <th>제품</th>
+                        <th>목표수량</th>
+                        <th>상태</th>
+                        <th>계획 시작</th>
+                        <th>납기</th>
+                        <th>실제 시작</th>
+                        <th>실제 종료</th>
+                        <th>작업</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td>{{ order.work_order_id }}</td>
+                        <td>{{ order.line_id }}</td>
+                        <td>{{ order.product_id }}</td>
+                        <td>{{ order.target_qty }}</td>
+                        <td>{{ order.status }}</td>
+                        <td>{{ order.planned_start_at }}</td>
+                        <td>{{ order.due_at }}</td>
+                        <td>{{ order.actual_start_at or '-' }}</td>
+                        <td>{{ order.actual_end_at or '-' }}</td>
+                        <td>
+                            {% if order.status == 'planned' %}
+                            <form method="post"
+                                  action="/work-orders/{{ order.work_order_id }}/start">
+                                <button type="submit"
+                                        class="btn btn-sm btn-success">
+                                    작업 시작
+                                </button>
+                            </form>
+
+                            {% elif order.status == 'running' %}
+                            <form method="post"
+                                  action="/work-orders/{{ order.work_order_id }}/complete">
+                                <button type="submit"
+                                        class="btn btn-sm btn-primary">
+                                    작업 완료
+                                </button>
+                            </form>
+
+                            {% else %}
+                            완료
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

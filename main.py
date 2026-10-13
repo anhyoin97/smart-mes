@@ -446,3 +446,85 @@ def update_line_page(
         "message": "생산라인 수정 완료",
         "line_id": line_id
     }
+
+# ============================================================
+# HTML용 작업지시 조회
+# ============================================================
+
+@app.get("/work-orders", response_class=HTMLResponse)
+def work_orders_page(request: Request):
+
+		# 작업지시 목록 조회
+    orders = service.list_work_orders()
+    
+    # 생산라인 목록 조회(SELECT용)
+    lines = service.list_lines()
+    
+    # 제품 목록 조회(SELECT용)
+    products = service.list_products()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="orders.html",
+        context={
+            "orders": orders,
+            "lines": lines,
+            "products": products
+        }
+    )
+
+# ============================================================
+# HTML용 작업지시 등록
+# ============================================================
+
+@app.post("/work-orders")
+def create_work_order_page(
+    line_id: str = Form(...),
+    product_id: str = Form(...),
+    target_qty: int = Form(...),
+    planned_start_at: str = Form(...),
+    due_at: str = Form(...)
+):
+    planned_start_at = planned_start_at.replace("T", " ") + ":00"
+    due_at = due_at.replace("T", " ") + ":00"
+
+    service.create_work_order(
+        line_id,
+        product_id,
+        target_qty,
+        planned_start_at,
+        due_at
+    )
+
+    return RedirectResponse(
+        url="/work-orders",
+        status_code=303
+    )
+
+# ============================================================
+# HTML용 작업지시 착수
+# ============================================================
+
+@app.post("/work-orders/{work_order_id}/start")
+def start_work_order_page(work_order_id: int):
+
+    service.start_work_order(work_order_id)
+
+    return RedirectResponse(
+        url="/work-orders",
+        status_code=303
+    )
+
+# ============================================================
+# HTML용 작업지시 착수
+# ============================================================
+
+@app.post("/work-orders/{work_order_id}/complete")
+def complete_work_order_page(work_order_id: int):
+
+    service.complete_work_order(work_order_id)
+
+    return RedirectResponse(
+        url="/work-orders",
+        status_code=303
+    )
