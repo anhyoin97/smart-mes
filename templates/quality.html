@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}품질검사 관리{% endblock %}
+
+{% block content %}
+
+<h2 class="mb-4">품질검사 관리</h2>
+
+<!-- ====================================================
+     품질검사 등록
+==================================================== -->
+<div class="card mb-4">
+    <div class="card-header">품질검사 등록</div>
+
+    <div class="card-body">
+
+        <form method="post"
+              action="/quality-inspections"
+              enctype="multipart/form-data">
+
+            <!-- 작업지시 선택 -->
+            <div class="mb-3">
+                <label class="form-label">작업지시</label>
+
+                <select name="work_order_id"
+                        class="form-select" required>
+
+                    <option value="">작업지시 선택</option>
+
+                    {% for order in orders %}
+                    <option value="{{ order.work_order_id }}">
+                        {{ order.work_order_id }} -
+                        {{ order.line_id }} /
+                        {{ order.product_id }}
+                        (목표 {{ order.target_qty }}개)
+                    </option>
+                    {% endfor %}
+
+                </select>
+            </div>
+
+            <!-- 이미지 업로드 -->
+            <div class="row mb-3">
+
+                <div class="col-md-6">
+                    <label class="form-label">
+                        원본 이미지 (선택)
+                    </label>
+
+                    <input type="file"
+                           name="raw_image"
+                           class="form-control"
+                           accept="image/jpeg">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">
+                        탐지 결과 이미지 (선택)
+                    </label>
+
+                    <input type="file"
+                           name="det_image"
+                           class="form-control"
+                           accept="image/jpeg, image/png">
+                </div>
+
+            </div>
+
+            <!-- 결함 개수 입력 -->
+            <h6 class="mt-4 mb-3">결함 유형별 개수</h6>
+
+            <div class="row g-3 mb-4">
+
+                <div class="col-md-4">
+                    <label class="form-label">Copper</label>
+                    <input type="number"
+                           name="copper"
+                           class="form-control"
+                           min="0" value="0" required>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Mousebite</label>
+                    <input type="number"
+                           name="mousebite"
+                           class="form-control"
+                           min="0" value="0" required>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Open</label>
+                    <input type="number"
+                           name="open"
+                           class="form-control"
+                           min="0" value="0" required>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Pin-hole</label>
+                    <input type="number"
+                           name="pin_hole"
+                           class="form-control"
+                           min="0" value="0" required>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Short</label>
+                    <input type="number"
+                           name="short"
+                           class="form-control"
+                           min="0" value="0" required>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Spur</label>
+                    <input type="number"
+                           name="spur"
+                           class="form-control"
+                           min="0" value="0" required>
+                </div>
+
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                품질검사 등록
+            </button>
+
+        </form>
+    </div>
+</div>
+
+
+<!-- ====================================================
+     품질검사 목록
+==================================================== -->
+<div class="card">
+    <div class="card-header">품질검사 목록</div>
+
+    <div class="card-body">
+        <div class="table-responsive">
+
+            <table class="table table-striped align-middle">
+
+                <thead>
+                    <tr>
+                        <th>검사 ID</th>
+                        <th>등록일시</th>
+                        <th>작업지시</th>
+                        <th>생산라인</th>
+                        <th>제품</th>
+                        <th>결함 수</th>
+                        <th>검사 결과</th>
+                        <th>이미지</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for item in inspections %}
+
+                    <tr>
+                        <td>{{ item.inspection_id }}</td>
+                        <td>{{ item.created_at }}</td>
+                        <td>{{ item.work_order_id }}</td>
+                        <td>{{ item.line_name }}</td>
+                        <td>{{ item.product_name }}</td>
+
+                        <!-- 결함 개수 합계 -->
+                        <td>
+                            {{
+                                item.copper +
+                                item.mousebite +
+                                item.open +
+                                item.pin_hole +
+                                item.short +
+                                item.spur
+                            }}
+                        </td>
+
+                        <!-- PASS / FAIL -->
+                        <td>
+                            {% if item.result == "PASS" %}
+                                <span class="badge bg-success">
+                                    PASS
+                                </span>
+                            {% else %}
+                                <span class="badge bg-danger">
+                                    FAIL
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- 이미지 확인 -->
+                        <td>
+                            {% if item.image_id %}
+
+                                <a href="/static/inspections/{{ item.image_id }}_raw.jpg"
+                                   target="_blank">
+                                    원본
+                                </a>
+
+                                /
+
+                                <a href="/static/inspections/{{ item.image_id }}_det.png"
+                                   target="_blank">
+                                    결과
+                                </a>
+
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    {% else %}
+
+                    <tr>
+                        <td colspan="8" class="text-center">
+                            등록된 품질검사가 없습니다.
+                        </td>
+                    </tr>
+
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

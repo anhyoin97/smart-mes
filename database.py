@@ -14,13 +14,19 @@ def get_db_connection():
 
 def init_db():
 
+    # schema
     with open("schema.sql", "r", encoding="utf-8") as file:
         
         schema = file.read()
 
+    # seed_data
+    with open("seed_data.sql", "r", encoding="utf-8") as file:
+        seed_data = file.read()
+
     conn = get_db_connection()
 
     conn.executescript(schema)
+    conn.executescript(seed_data)
 
     conn.commit()
 

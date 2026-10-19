@@ -2,3 +2,10 @@ fastapi
 uvicorn
 jinja2
 python-multipart
+pillow
+tensorflow
+pandas
+joblib
+scikit-learn==1.6.1
+
+# pip install -r requirements.txt

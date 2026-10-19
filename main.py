@@ -1,13 +1,25 @@
-from fastapi import FastAPI, Body, Request, Form
+from datetime import datetime
+from fastapi import FastAPI, Body, Request, Form, File, UploadFile, HTTPException
+from fastapi.staticfiles import StaticFiles
+
 import service
 
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+# conda activate mcp_env
+# uvicorn main:app --reload          
+
 app = FastAPI(
     swagger_ui_parameters={
         "operationsSorter": "alpha"
     }
+)
+
+app.mount(
+    "/static",
+    StaticFiles(directory="static"),
+    name="static"
 )
 
 templates = Jinja2Templates(
@@ -239,7 +251,7 @@ def list_work_orders():
 @app.post("/api/work-orders")
 def create_work_order(data: dict = Body(...)):
 
-    work_order_id = service.create_work_order(
+    result = service.create_work_order(
         data["line_id"],
         data["product_id"],
         data["target_qty"],
@@ -249,7 +261,8 @@ def create_work_order(data: dict = Body(...)):
 
     return {
         "success": True,
-        "work_order_id": work_order_id,
+        "work_order_id": result["work_order_id"],
+				"predicted_duration_h": result["predicted_duration_h"],
         "status": "planned"
     }
 
@@ -485,8 +498,9 @@ def create_work_order_page(
     planned_start_at: str = Form(...),
     due_at: str = Form(...)
 ):
-    planned_start_at = planned_start_at.replace("T", " ") + ":00"
-    due_at = due_at.replace("T", " ") + ":00"
+    # datetime-local 값은 초 포함 여부가 브라우저마다 달라 항상 'YYYY-MM-DD HH:MM:SS'로 통일
+    planned_start_at = datetime.fromisoformat(planned_start_at).strftime("%Y-%m-%d %H:%M:%S")
+    due_at = datetime.fromisoformat(due_at).strftime("%Y-%m-%d %H:%M:%S")
 
     service.create_work_order(
         line_id,
@@ -527,4 +541,203 @@ def complete_work_order_page(work_order_id: int):
     return RedirectResponse(
         url="/work-orders",
         status_code=303
+    )
+
+# ============================================================
+# 품질검사 조회
+# ============================================================
+
+@app.get("/api/quality-inspections")
+def api_list_quality_inspections():
+
+    inspections = service.list_quality_inspections()
+
+    return {
+        "message": "품질검사 목록 조회 성공",
+        "items": inspections
+    }
+
+# ============================================================
+# 품질검사 등록
+# ============================================================
+
+@app.post("/api/quality-inspections")
+async def api_create_quality_inspection(
+    work_order_id: int = Form(...),
+
+    copper: int = Form(0),
+    mousebite: int = Form(0),
+    open: int = Form(0),
+    pin_hole: int = Form(0),
+    short: int = Form(0),
+    spur: int = Form(0),
+
+    raw_image: UploadFile | None = File(None),
+    det_image: UploadFile | None = File(None)
+):
+
+    # 이미지가 있으면 파일 내용 읽기
+    raw_data = await raw_image.read() if raw_image and raw_image.filename else None
+    det_data = await det_image.read() if det_image and det_image.filename else None
+
+    try:
+        inspection_id = service.create_quality_inspection(
+            work_order_id,
+            copper, mousebite, open, pin_hole, short, spur,
+            raw_image=raw_data,
+            det_image=det_data
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if inspection_id is None:
+        raise HTTPException(
+            status_code=404,
+            detail="해당 작업지시를 찾을 수 없습니다."
+        )
+
+    return {
+        "message": "품질검사 등록 성공",
+        "inspection_id": inspection_id
+    }
+
+# ============================================================
+# HTML용 품질검사 조회
+# ============================================================
+
+@app.get("/quality-inspections", response_class=HTMLResponse)
+def quality_inspections_page(request: Request):
+
+    inspections = service.list_quality_inspections()
+    orders = service.list_work_orders()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="quality.html",
+        context={
+            "inspections": inspections,
+            "orders": orders
+        }
+    )
+
+
+# ============================================================
+# HTML용 품질검사 등록
+# ============================================================
+
+@app.post("/quality-inspections")
+async def create_quality_inspection_page(
+    work_order_id: int = Form(...),
+
+    copper: int = Form(0),
+    mousebite: int = Form(0),
+    open: int = Form(0),
+    pin_hole: int = Form(0),
+    short: int = Form(0),
+    spur: int = Form(0),
+
+    raw_image: UploadFile | None = File(None),
+    det_image: UploadFile | None = File(None)
+):
+
+    # 이미지가 있으면 파일 내용 읽기
+    raw_data = await raw_image.read() if raw_image and raw_image.filename else None
+    det_data = await det_image.read() if det_image and det_image.filename else None
+
+    # 품질검사 등록 서비스 호출
+    try:
+        inspection_id = service.create_quality_inspection(
+            work_order_id,
+            copper, mousebite, open, pin_hole, short, spur,
+            raw_image=raw_data,
+            det_image=det_data
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if inspection_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="해당 작업지시를 찾을 수 없습니다."
+        )
+
+    return RedirectResponse(
+        url="/quality-inspections",
+        status_code=303
+    )        
+
+# ============================================================
+# 생산라인 센서 이력 조회
+# ============================================================
+
+@app.get("/api/line-sensor-readings")
+def api_list_line_sensor_readings(line_id: str | None = None):
+
+    readings = service.list_line_sensor_readings(line_id)
+
+    return {
+        "message": "센서 이력 조회 성공",
+        "items": readings
+    }
+
+
+# ============================================================
+# 생산라인 센서 이력 등록
+# ============================================================
+
+@app.post("/api/line-sensor-readings")
+def api_create_line_sensor_reading(data: dict = Body(...)):
+
+    try:
+        reading_id = service.create_line_sensor_reading(
+            line_id=data["line_id"],
+            temperature=float(data["temperature"]),
+            vibration=float(data["vibration"]),
+            current=float(data["current"]),
+            rpm=float(data["rpm"]),
+            health_status=data.get("health_status")
+        )
+
+    except (KeyError, ValueError, TypeError):
+        raise HTTPException(
+            status_code=400,
+            detail="센서 입력값이 올바르지 않습니다."
+        )
+
+    if reading_id is None:
+        raise HTTPException(
+            status_code=404,
+            detail="해당 생산라인을 찾을 수 없습니다."
+        )
+
+    return {
+        "message": "센서 데이터 등록 성공",
+        "reading_id": reading_id
+    }
+
+# ============================================================
+# HTML용 생산라인 센서 이력 조회
+# ============================================================
+
+@app.get("/line-sensor-readings", response_class=HTMLResponse)
+def line_sensor_readings_page(
+    request: Request,
+    line_id: str | None = None
+):
+		# 빈 문자열이면 전체 조회
+    line_id = line_id or None
+
+    readings = service.list_line_sensor_readings(line_id)
+    lines = service.list_lines()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="line_sensors.html",
+        context={
+            "readings": readings,
+            "lines": lines,
+            "selected_line_id": line_id
+        }
     )

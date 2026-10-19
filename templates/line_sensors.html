@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}생산라인 센서 이력{% endblock %}
+
+{% block content %}
+
+<h2 class="mb-4">생산라인 센서 이력</h2>
+
+<!-- ====================================================
+     센서 이력 조회 조건
+==================================================== -->
+<div class="card mb-4">
+    <div class="card-header">센서 이력 조회</div>
+
+    <div class="card-body">
+
+        <form method="get" action="/line-sensor-readings">
+
+            <div class="row align-items-end">
+
+                <div class="col-md-6">
+                    <label class="form-label">생산라인</label>
+
+                    <select name="line_id" class="form-select">
+
+                        <option value="">전체 생산라인</option>
+
+                        {% for line in lines %}
+                        <option value="{{ line.line_id }}"
+                            {% if selected_line_id == line.line_id %}
+                                selected
+                            {% endif %}>
+
+                            {{ line.line_id }} - {{ line.line_name }}
+
+                        </option>
+                        {% endfor %}
+
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary">
+                        조회
+                    </button>
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+
+<!-- ====================================================
+     센서 이력 목록
+==================================================== -->
+<div class="card">
+    <div class="card-header">센서 측정 목록</div>
+
+    <div class="card-body">
+        <div class="table-responsive">
+
+            <table class="table table-striped align-middle">
+
+                <thead>
+                    <tr>
+                        <th>측정 ID</th>
+                        <th>측정 일시</th>
+                        <th>생산라인</th>
+                        <th>온도 (°C)</th>
+                        <th>진동 (mm/s)</th>
+                        <th>전류 (A)</th>
+                        <th>RPM</th>
+                        <th>건전성 상태</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for item in readings %}
+
+                    <tr>
+                        <td>{{ item.reading_id }}</td>
+                        <td>{{ item.measured_at }}</td>
+                        <td>{{ item.line_name }}</td>
+
+                        <td>{{ item.temperature }}</td>
+                        <td>{{ item.vibration }}</td>
+                        <td>{{ item.current }}</td>
+                        <td>{{ item.rpm }}</td>
+
+                        <!-- 건전성 상태 -->
+                        <td>
+                            {% if item.health_status == "normal" %}
+                                <span class="badge bg-success">
+                                    정상
+                                </span>
+
+                            {% elif item.health_status == "warning" %}
+                                <span class="badge bg-warning text-dark">
+                                    주의
+                                </span>
+
+                            {% elif item.health_status == "abnormal" %}
+												        <span class="badge bg-danger">
+												            이상
+												        </span>
+														{% else %}
+											        <span class="badge bg-secondary">
+											            미판정
+											        </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    {% else %}
+
+                    <tr>
+                        <td colspan="8" class="text-center">
+                            조회된 센서 데이터가 없습니다.
+                        </td>
+                    </tr>
+
+                    {% endfor %}
+                </tbody>
+
+            </table>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}

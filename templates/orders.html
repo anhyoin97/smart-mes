@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 
 {% block title %}작업지시 관리{% endblock %}
@@ -37,20 +36,17 @@
 
             <div class="mb-3">
                 <label class="form-label">목표수량</label>
-                <input type="number" name="target_qty" min="1"
-                       class="form-control" required>
+                <input type="number" name="target_qty" min="1" class="form-control" required>
             </div>
 
             <div class="mb-3">
                 <label class="form-label">계획 시작시각</label>
-                <input type="datetime-local" name="planned_start_at"
-                       class="form-control" required>
+                <input type="datetime-local" name="planned_start_at" class="form-control" required>
             </div>
 
             <div class="mb-3">
                 <label class="form-label">완료 예정시각</label>
-                <input type="datetime-local" name="due_at"
-                       class="form-control" required>
+                <input type="datetime-local" name="due_at" class="form-control" required>
             </div>
 
             <button type="submit" class="btn btn-primary">
@@ -72,6 +68,7 @@
                         <th>생산라인</th>
                         <th>제품</th>
                         <th>목표수량</th>
+                        <th>납기준수예측</th>
                         <th>상태</th>
                         <th>계획 시작</th>
                         <th>납기</th>
@@ -87,6 +84,15 @@
                         <td>{{ order.line_id }}</td>
                         <td>{{ order.product_id }}</td>
                         <td>{{ order.target_qty }}</td>
+                        <td>
+                            {% if order.predicted_late is none %}
+                            <span class="badge bg-secondary">-</span>
+                            {% elif order.predicted_late == 1 %}
+                            <span class="badge bg-danger">지연 예상 ({{order.predicted_late_probability}})</span>
+                            {% else %}
+                            <span class="badge bg-success">정상 예상 ({{order.predicted_late_probability}})</span>
+                            {% endif %}
+                        </td>
                         <td>{{ order.status }}</td>
                         <td>{{ order.planned_start_at }}</td>
                         <td>{{ order.due_at }}</td>
@@ -94,19 +100,15 @@
                         <td>{{ order.actual_end_at or '-' }}</td>
                         <td>
                             {% if order.status == 'planned' %}
-                            <form method="post"
-                                  action="/work-orders/{{ order.work_order_id }}/start">
-                                <button type="submit"
-                                        class="btn btn-sm btn-success">
+                            <form method="post" action="/work-orders/{{ order.work_order_id }}/start">
+                                <button type="submit" class="btn btn-sm btn-success">
                                     작업 시작
                                 </button>
                             </form>
 
                             {% elif order.status == 'running' %}
-                            <form method="post"
-                                  action="/work-orders/{{ order.work_order_id }}/complete">
-                                <button type="submit"
-                                        class="btn btn-sm btn-primary">
+                            <form method="post" action="/work-orders/{{ order.work_order_id }}/complete">
+                                <button type="submit" class="btn btn-sm btn-primary">
                                     작업 완료
                                 </button>
                             </form>
