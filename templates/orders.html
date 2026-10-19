@@ -68,6 +68,7 @@
                         <th>생산라인</th>
                         <th>제품</th>
                         <th>목표수량</th>
+                        <th>예측 소요시간</th>
                         <th>납기준수예측</th>
                         <th>상태</th>
                         <th>계획 시작</th>
@@ -84,13 +85,14 @@
                         <td>{{ order.line_id }}</td>
                         <td>{{ order.product_id }}</td>
                         <td>{{ order.target_qty }}</td>
+                        <td>{{ order.predicted_duration_h }}</td>
                         <td>
                             {% if order.predicted_late is none %}
                             <span class="badge bg-secondary">-</span>
                             {% elif order.predicted_late == 1 %}
-                            <span class="badge bg-danger">지연 예상 ({{order.predicted_late_probability}})</span>
+                            <span class="badge bg-danger">지연 예상 (~{{ order.predicted_end_at }}, {{ order.predicted_duration_h }}h)</span>
                             {% else %}
-                            <span class="badge bg-success">정상 예상 ({{order.predicted_late_probability}})</span>
+                            <span class="badge bg-success">정상 예상 (~{{ order.predicted_end_at }}, {{ order.predicted_duration_h }}h)</span>
                             {% endif %}
                         </td>
                         <td>{{ order.status }}</td>
