@@ -1,0 +1,15 @@
+[
+    "target_qty",
+    "hour",
+    "weekday",
+    "slack_h",
+    "line_id_LINE-01",
+    "line_id_LINE-02",
+    "line_id_LINE-03",
+    "product_id_PROD-A",
+    "product_id_PROD-B",
+    "product_id_PROD-C",
+    "product_id_PROD-D",
+    "product_id_PROD-E",
+    "product_id_PROD-F"
+]

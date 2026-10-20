@@ -397,6 +397,24 @@ def create_work_order(
         planned_start_at
     )
 
+    # 3. 납기 지연 예측
+    late_result = ai_service.predict_late(
+        line_id,
+        product_id,
+        target_qty,
+        planned_start_at,
+        due_at
+    )
+
+    predicted_late = late_result[
+        "predicted_late"
+    ]
+
+    predicted_late_probability = late_result[
+        "predicted_late_probability"
+    ]
+
+    # 4. 작업지시 저장
     with get_db_connection() as conn:
 
         cursor = conn.execute(
@@ -408,9 +426,11 @@ def create_work_order(
                 target_qty,
                 planned_start_at,
                 due_at,
-                predicted_duration_h
+                predicted_duration_h,
+                predicted_late,
+                predicted_late_probability
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 line_id,
@@ -418,17 +438,21 @@ def create_work_order(
                 target_qty,
                 planned_start_at,
                 due_at,
-                predicted_duration_h
+                predicted_duration_h,
+                predicted_late,
+                predicted_late_probability
             )
         )
 
         work_order_id = cursor.lastrowid
-        
+
         conn.commit()
 
         return {
             "work_order_id": work_order_id,
-            "predicted_duration_h": predicted_duration_h
+            "predicted_duration_h": predicted_duration_h,
+            "predicted_late": predicted_late,
+            "predicted_late_probability": predicted_late_probability
         }
 
 

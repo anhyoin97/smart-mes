@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from fastapi import FastAPI, Body, Request, Form, File, UploadFile, HTTPException
 from fastapi.staticfiles import StaticFiles
 
@@ -263,6 +263,8 @@ def create_work_order(data: dict = Body(...)):
         "success": True,
         "work_order_id": result["work_order_id"],
 				"predicted_duration_h": result["predicted_duration_h"],
+        "predicted_late": result["predicted_late"],
+        "predicted_late_probability": result["predicted_late_probability"],
         "status": "planned"
     }
 
@@ -469,17 +471,6 @@ def work_orders_page(request: Request):
 
 		# 작업지시 목록 조회
     orders = service.list_work_orders()
-
-    # 예측 소요시간으로 예상 종료시각을 계산해 납기 지연 여부 판정
-    for order in orders:
-        hours = order["predicted_duration_h"]
-        if hours is None:
-            order["predicted_end_at"] = None
-            order["predicted_late"] = None
-            continue
-        predicted_end = datetime.fromisoformat(order["planned_start_at"]) + timedelta(hours=hours)
-        order["predicted_end_at"] = predicted_end.strftime("%Y-%m-%d %H:%M")
-        order["predicted_late"] = int(predicted_end > datetime.fromisoformat(order["due_at"]))
 
     # 생산라인 목록 조회(SELECT용)
     lines = service.list_lines()

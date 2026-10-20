@@ -90,9 +90,9 @@
                             {% if order.predicted_late is none %}
                             <span class="badge bg-secondary">-</span>
                             {% elif order.predicted_late == 1 %}
-                            <span class="badge bg-danger">지연 예상 (~{{ order.predicted_end_at }}, {{ order.predicted_duration_h }}h)</span>
+                            <span class="badge bg-danger">지연 예상 ({{order.predicted_late_probability}})</span>
                             {% else %}
-                            <span class="badge bg-success">정상 예상 (~{{ order.predicted_end_at }}, {{ order.predicted_duration_h }}h)</span>
+                            <span class="badge bg-success">정상 예상 ({{order.predicted_late_probability}})</span>
                             {% endif %}
                         </td>
                         <td>{{ order.status }}</td>
