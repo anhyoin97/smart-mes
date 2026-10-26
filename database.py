@@ -23,10 +23,15 @@ def init_db():
     with open("seed_data.sql", "r", encoding="utf-8") as file:
         seed_data = file.read()
 
+    # sensor_seed_data
+    with open("sensor_seed_data.sql", "r", encoding="utf-8") as file:
+        sensor_seed_data = file.read()
+
     conn = get_db_connection()
 
     conn.executescript(schema)
     conn.executescript(seed_data)
+    conn.executescript(sensor_seed_data)
 
     conn.commit()
 

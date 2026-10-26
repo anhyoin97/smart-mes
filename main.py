@@ -693,12 +693,13 @@ def api_list_line_sensor_readings(line_id: str | None = None):
 def api_create_line_sensor_reading(data: dict = Body(...)):
 
     try:
-        reading_id = service.create_line_sensor_reading(
+        result = service.create_line_sensor_reading(
             line_id=data["line_id"],
             temperature=float(data["temperature"]),
             vibration=float(data["vibration"]),
             current=float(data["current"]),
             rpm=float(data["rpm"]),
+            # 시뮬레이터는 보내지 않음 -> AI가 예측. 직접 보내면 그 값을 그대로 저장
             health_status=data.get("health_status")
         )
 
@@ -708,7 +709,7 @@ def api_create_line_sensor_reading(data: dict = Body(...)):
             detail="센서 입력값이 올바르지 않습니다."
         )
 
-    if reading_id is None:
+    if result is None:
         raise HTTPException(
             status_code=404,
             detail="해당 생산라인을 찾을 수 없습니다."
@@ -716,7 +717,7 @@ def api_create_line_sensor_reading(data: dict = Body(...)):
 
     return {
         "message": "센서 데이터 등록 성공",
-        "reading_id": reading_id
+        **result
     }
 
 # ============================================================

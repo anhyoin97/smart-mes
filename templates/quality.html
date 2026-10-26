@@ -6,6 +6,7 @@
 
 <h2 class="mb-4">품질검사 관리</h2>
 
+
 <!-- ====================================================
      품질검사 등록
 ==================================================== -->
@@ -20,51 +21,70 @@
 
             <!-- 작업지시 선택 -->
             <div class="mb-3">
+
                 <label class="form-label">작업지시</label>
 
                 <select name="work_order_id"
-                        class="form-select" required>
+                        class="form-select"
+                        required>
 
                     <option value="">작업지시 선택</option>
 
                     {% for order in orders %}
+
                     <option value="{{ order.work_order_id }}">
                         {{ order.work_order_id }} -
                         {{ order.line_id }} /
                         {{ order.product_id }}
                         (목표 {{ order.target_qty }}개)
                     </option>
+
                     {% endfor %}
 
                 </select>
-            </div>
-
-            <!-- 이미지 업로드 -->
-            <div class="row mb-3">
-
-                <div class="col-md-6">
-                    <label class="form-label">
-                        원본 이미지 (선택)
-                    </label>
-
-                    <input type="file"
-                           name="raw_image"
-                           class="form-control"
-                           accept="image/jpeg">
-                </div>
-
-                <div class="col-md-6">
-                    <label class="form-label">
-                        탐지 결과 이미지 (선택)
-                    </label>
-
-                    <input type="file"
-                           name="det_image"
-                           class="form-control"
-                           accept="image/jpeg, image/png">
-                </div>
 
             </div>
+
+
+            <!-- PCB 이미지 -->
+            <div class="mb-3">
+
+                <label class="form-label">
+                    PCB 이미지
+                </label>
+
+                <input type="file"
+                       id="rawImage"
+                       name="raw_image"
+                       class="form-control"
+                       accept="image/jpeg"
+                       required>
+
+                <button type="button"
+                        id="detectBtn"
+                        class="btn btn-outline-primary mt-2"
+                        disabled>
+                    AI 결함 탐지
+                </button>
+
+                <!--
+                    AI가 생성한 탐지 결과 이미지를
+                    기존 Form으로 전송하기 위한 숨겨진 입력
+                -->
+                <input type="file"
+                       id="detImage"
+                       name="det_image"
+                       hidden>
+
+            </div>
+
+
+            <!-- AI 상태 -->
+            <div id="aiStatus"
+                 class="alert alert-secondary">
+                AI 모델 로딩 중...
+            </div>
+
 
             <!-- 결함 개수 입력 -->
             <h6 class="mt-4 mb-3">결함 유형별 개수</h6>
@@ -74,6 +94,7 @@
                 <div class="col-md-4">
                     <label class="form-label">Copper</label>
                     <input type="number"
+                           id="copper"
                            name="copper"
                            class="form-control"
                            min="0" value="0" required>
@@ -82,6 +103,7 @@
                 <div class="col-md-4">
                     <label class="form-label">Mousebite</label>
                     <input type="number"
+                           id="mousebite"
                            name="mousebite"
                            class="form-control"
                            min="0" value="0" required>
@@ -90,6 +112,7 @@
                 <div class="col-md-4">
                     <label class="form-label">Open</label>
                     <input type="number"
+                           id="open"
                            name="open"
                            class="form-control"
                            min="0" value="0" required>
@@ -98,6 +121,7 @@
                 <div class="col-md-4">
                     <label class="form-label">Pin-hole</label>
                     <input type="number"
+                           id="pin_hole"
                            name="pin_hole"
                            class="form-control"
                            min="0" value="0" required>
@@ -106,6 +130,7 @@
                 <div class="col-md-4">
                     <label class="form-label">Short</label>
                     <input type="number"
+                           id="short"
                            name="short"
                            class="form-control"
                            min="0" value="0" required>
@@ -114,34 +139,51 @@
                 <div class="col-md-4">
                     <label class="form-label">Spur</label>
                     <input type="number"
+                           id="spur"
                            name="spur"
                            class="form-control"
                            min="0" value="0" required>
                 </div>
-
             </div>
 
+            <!-- AI 탐지 결과 -->
+            <div class="mb-4">
+                <h6 class="mb-3">AI 탐지 결과</h6>
+                <canvas id="resultCanvas"
+                        class="border"
+                        style="max-width: 100%;">
+                </canvas>
+            </div>
+
+            <!-- 품질검사 등록 -->
             <button type="submit" class="btn btn-primary">
                 품질검사 등록
             </button>
 
         </form>
+
     </div>
 </div>
+
 
 
 <!-- ====================================================
      품질검사 목록
 ==================================================== -->
 <div class="card">
-    <div class="card-header">품질검사 목록</div>
+
+    <div class="card-header">
+        품질검사 목록
+    </div>
 
     <div class="card-body">
+
         <div class="table-responsive">
 
             <table class="table table-striped align-middle">
 
                 <thead>
+
                     <tr>
                         <th>검사 ID</th>
                         <th>등록일시</th>
@@ -152,9 +194,12 @@
                         <th>검사 결과</th>
                         <th>이미지</th>
                     </tr>
+
                 </thead>
 
+
                 <tbody>
+
                     {% for item in inspections %}
 
                     <tr>
@@ -176,8 +221,10 @@
                             }}
                         </td>
 
+
                         <!-- PASS / FAIL -->
                         <td>
+
                             {% if item.result == "PASS" %}
                                 <span class="badge bg-success">
                                     PASS
@@ -191,6 +238,7 @@
 
                         <!-- 이미지 확인 -->
                         <td>
+
                             {% if item.image_id %}
 
                                 <a href="/static/inspections/{{ item.image_id }}_raw.jpg"
@@ -223,8 +271,300 @@
                 </tbody>
 
             </table>
+
         </div>
     </div>
 </div>
+
+
+<!-- ====================================================
+     YOLO / LiteRT
+==================================================== -->
+<script type="importmap">
+{
+    "imports": {
+        "@ultralytics/yolo": "https://esm.sh/@ultralytics/yolo",
+        "@litertjs/core": "https://esm.sh/@litertjs/core",
+        "@litertjs/wasm-utils": "https://esm.sh/@litertjs/wasm-utils"
+    }
+}
+</script>
+
+
+<script type="module">
+
+import {
+    YOLO,
+    annotate
+} from "@ultralytics/yolo";
+
+
+// ============================================================
+// HTML 객체
+// ============================================================
+
+const rawImage =
+    document.getElementById("rawImage");
+
+const detImage =
+    document.getElementById("detImage");
+
+const detectBtn =
+    document.getElementById("detectBtn");
+
+const resultCanvas =
+    document.getElementById("resultCanvas");
+
+const aiStatus =
+    document.getElementById("aiStatus");
+
+
+let model;
+
+
+// ============================================================
+// PCB 결함 탐지 모델 로드
+// ============================================================
+
+try {
+
+    model = await YOLO.load(
+        "/static/pcb_model.tflite"
+    );
+
+    aiStatus.className =
+        "alert alert-success";
+
+    aiStatus.textContent =
+        "AI 모델 로딩 완료";
+
+    detectBtn.disabled = false;
+
+} catch (error) {
+
+    console.error(error);
+
+    aiStatus.className =
+        "alert alert-danger";
+
+    aiStatus.textContent =
+        "AI 모델 로딩 실패";
+
+}
+
+
+
+// ============================================================
+// AI 결함 탐지
+// ============================================================
+
+detectBtn.addEventListener(
+    "click",
+    async () => {
+
+        // 선택한 PCB 이미지
+        const file =
+            rawImage.files[0];
+
+
+        if (!file) {
+            alert("PCB 이미지를 선택하세요.");
+            return;
+        }
+
+        detectBtn.disabled = true;
+
+        detectBtn.textContent =
+            "결함 탐지 중...";
+
+
+        aiStatus.className =
+            "alert alert-warning";
+
+        aiStatus.textContent =
+            "AI가 PCB 이미지를 검사하고 있습니다.";
+
+
+        try {
+
+            // =================================================
+            // 1. YOLO 객체탐지
+            // =================================================
+
+            const results =
+                await model.predict(
+                    file,
+                    {
+                        conf: 0.25,
+                        iou: 0.7
+                    }
+                );
+
+
+            // =================================================
+            // 2. Bounding Box 표시
+            // =================================================
+
+            await annotate(
+                resultCanvas,  // 결과를 그릴 캔버스
+                file,          // 원본 이미지 소스
+                results        // 모델의 탐지 결과 데이터(좌표 등)
+            );
+
+
+            // =================================================
+            // 3. 결함 개수 초기화
+            // =================================================
+
+            const counts = {
+                copper: 0,
+                mousebite: 0,
+                open: 0,
+                "pin-hole": 0,
+                short: 0,
+                spur: 0
+
+            };
+
+
+            // =================================================
+            // 4. 탐지된 결함 개수 계산
+            // =================================================
+
+            for (const box of results.boxes) {
+                if (counts[box.name] !== undefined) {
+                    counts[box.name]++;
+                }
+            }
+
+            // =================================================
+            // 5. 기존 Form에 결함 개수 자동 입력
+            // =================================================
+
+            document.getElementById(
+                "copper"
+            ).value = counts.copper;
+
+
+            document.getElementById(
+                "mousebite"
+            ).value = counts.mousebite;
+
+
+            document.getElementById(
+                "open"
+            ).value = counts.open;
+
+
+            document.getElementById(
+                "pin_hole"
+            ).value = counts["pin-hole"];
+
+
+            document.getElementById(
+                "short"
+            ).value = counts.short;
+
+
+            document.getElementById(
+                "spur"
+            ).value = counts.spur;
+
+
+            // =================================================
+            // 6. 탐지 결과 Canvas → PNG
+            // =================================================
+
+            const blob =
+                await new Promise(
+                    resolve =>
+                        resultCanvas.toBlob(  // 바이너리 객체로 변환
+                            resolve,          
+                            "image/png"
+                        )
+                );
+
+
+            // =================================================
+            // 7. PNG 이미지 파일 생성
+            // =================================================
+
+            const detectedFile =
+                new File(
+                    [blob],
+                    "detected.png",
+                    {
+                        type: "image/png"
+                    }
+                );
+
+
+            // =================================================
+            // 8. 기존 det_image Form에 자동 입력
+            // =================================================
+
+            const dataTransfer =
+                new DataTransfer();
+
+            dataTransfer.items.add(
+                detectedFile
+            );
+
+            detImage.files =
+                dataTransfer.files;
+
+
+
+            // =================================================
+            // 9. 탐지 결과 표시
+            // =================================================
+
+            const totalDefects =
+                results.boxes.length;
+
+
+            if (totalDefects === 0) {
+
+                aiStatus.className =
+                    "alert alert-success";
+
+                aiStatus.textContent =
+                    "AI 검사 완료 - 탐지된 결함이 없습니다.";
+
+            } else {
+
+                aiStatus.className =
+                    "alert alert-danger";
+
+                aiStatus.textContent =
+                    `AI 검사 완료 - 탐지된 결함 ${totalDefects}개`;
+
+            }
+
+
+        } catch (error) {
+
+            console.error(error);
+
+            aiStatus.className =
+                "alert alert-danger";
+
+            aiStatus.textContent =
+                "결함 탐지 중 오류가 발생했습니다.";
+
+        } finally {
+
+            detectBtn.disabled = false;
+
+            detectBtn.textContent =
+                "AI 결함 탐지";
+
+        }
+
+    }
+);
+
+</script>
+
 
 {% endblock %}

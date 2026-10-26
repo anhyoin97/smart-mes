@@ -662,10 +662,10 @@ def create_line_sensor_reading(
     vibration,
     current,
     rpm,
-    health_status
+    health_status=None
 ):
 
-    # 건전성 상태 검증
+    # 건전성 상태 검증 (상태를 직접 입력한 경우에만 해당)
     if health_status is not None and health_status not in ("normal", "warning", "abnormal"):
         raise ValueError("올바르지 않은 건전성 상태입니다.")
 
@@ -703,4 +703,77 @@ def create_line_sensor_reading(
 
         conn.commit()
 
-        return cursor.lastrowid    
+        reading_id = cursor.lastrowid
+
+        # 상태를 직접 입력한 경우(기존 방식)에는 AI 예측을 하지 않음
+        if health_status is not None:
+
+            return {
+                "reading_id": reading_id,
+                "prediction": None,
+                "prediction_message": "상태가 직접 입력되어 AI 예측을 수행하지 않았습니다."
+            }
+
+        # 최근 30건 조회 (방금 저장한 데이터 포함)
+        rows = conn.execute(
+            """
+            SELECT
+                temperature,
+                vibration,
+                current,
+                rpm
+            FROM line_sensor_readings
+            WHERE line_id = ?
+            ORDER BY measured_at DESC,
+                     reading_id DESC
+            LIMIT ?
+            """,
+            (line_id, ai_service.SENSOR_WINDOW)
+        ).fetchall()
+
+        # RNN은 과거 -> 현재 순서로 학습했으므로 조회한 데이터를 뒤집어줌
+        rows = list(reversed(rows))
+
+        # 30건이 쌓이지 않았다면 예측하지 않음
+        if len(rows) < ai_service.SENSOR_WINDOW:
+
+            return {
+                "reading_id": reading_id,
+                "prediction": None,
+                "prediction_message": f"센서 데이터 수집 중 ({len(rows)}/{ai_service.SENSOR_WINDOW})"
+            }
+
+        sensor_rows = [
+            [
+                row["temperature"],
+                row["vibration"],
+                row["current"],
+                row["rpm"]
+            ]
+            for row in rows
+        ]
+
+        # AI 예측 호출 (최근 30분 -> 다음 1분의 설비 상태)
+        prediction = ai_service.predict_sensor_status(
+            line_id,
+            sensor_rows
+        )
+
+        # 예측 결과를 DB에 저장
+        # 주의: 학습용 정답 컬럼(health_status)에 예측값이 저장되므로,
+        #       나중에 이 테이블로 재학습할 때는 예측값이 정답처럼 섞이지 않게 구분해야 함
+        conn.execute(
+            """
+            UPDATE line_sensor_readings
+            SET health_status = ?
+            WHERE reading_id = ?
+            """,
+            (prediction["status"], reading_id)
+        )
+
+        conn.commit()
+
+        return {
+            "reading_id": reading_id,
+            "prediction": prediction
+        }
