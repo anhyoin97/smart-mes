@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import joblib
+import numpy as np
 import pandas as pd
 import tensorflow as tf
 
@@ -153,42 +154,30 @@ def predict_late(
 
 
 # ============================================================
-# 생산라인 이상 상태 예측 (센서 시계열 RNN)
+# 센서 상태 예측 모델
 # ============================================================
-
-# 최근 30개(= 1분 간격이므로 최근 30분)의 센서값을 한 번에 입력으로 사용
-SENSOR_WINDOW = 30
-
-SENSOR_LABELS = ["normal", "warning", "abnormal"]
 
 sensor_rnn_model = tf.keras.models.load_model(
     MODEL_DIR / "sensor_rnn_model.keras"
 )
 
-# 생산라인별 Scaler: 학습할 때도 라인마다 그 라인의 데이터로 따로 만들었으므로
-# 예측할 때도 반드시 같은 라인의 Scaler를 사용해야 함
-sensor_rnn_scalers = {
-    "LINE-01": joblib.load(MODEL_DIR / "line1_sensor_rnn_scaler.pkl"),
-    "LINE-02": joblib.load(MODEL_DIR / "line2_sensor_rnn_scaler.pkl"),
-    "LINE-03": joblib.load(MODEL_DIR / "line3_sensor_rnn_scaler.pkl"),
-}
+line1_sensor_rnn_scaler = joblib.load(
+    MODEL_DIR / "line1_sensor_rnn_scaler.pkl"
+)
+
+line2_sensor_rnn_scaler = joblib.load(
+    MODEL_DIR / "line2_sensor_rnn_scaler.pkl"
+)
+
+line3_sensor_rnn_scaler = joblib.load(
+    MODEL_DIR / "line3_sensor_rnn_scaler.pkl"
+)
 
 with open(MODEL_DIR / "sensor_rnn_features.json", encoding="utf-8") as f:
     sensor_rnn_features = json.load(f)
 
 
 def predict_sensor_status(line_id, sensor_rows):
-
-    """최근 30분 센서값으로 설비 상태(normal / warning / abnormal)와 확률 예측
-
-    sensor_rows: 과거 -> 현재 순서의 [temperature, vibration, current, rpm] 30개
-    """
-
-    if line_id not in sensor_rnn_scalers:
-        raise ValueError(f"센서 모델이 없는 생산라인입니다: {line_id}")
-
-    if len(sensor_rows) != SENSOR_WINDOW:
-        raise ValueError(f"센서 데이터는 {SENSOR_WINDOW}개가 필요합니다.")
 
     # 1. 최근 30개 센서 데이터를 DataFrame으로 변환
     df = pd.DataFrame(
@@ -207,28 +196,40 @@ def predict_sensor_status(line_id, sensor_rows):
     # 3. One-Hot Encoding
     df = pd.get_dummies(df, columns=["line_id"])
 
-    # 4. 학습 Feature와 동일하게 컬럼 순서 맞추기 (없는 라인 컬럼은 0)
+    # 4. 학습 Feature와 동일하게 컬럼 맞추기
     df = df.reindex(
         columns=sensor_rnn_features,
         fill_value=0
     )
 
-    # 5. get_dummies 결과가 True/False(bool)일 수 있으므로 숫자로 통일
-    df = df.astype(float)
+    # 5. 생산라인별 Scaler 선택
+    if line_id == "LINE-01":
+        scaler = line1_sensor_rnn_scaler
+    elif line_id == "LINE-02":
+        scaler = line2_sensor_rnn_scaler
+    else:
+        scaler = line3_sensor_rnn_scaler
 
-    # 6. 해당 생산라인의 Scaler로 Scaling
-    df = sensor_rnn_scalers[line_id].transform(df)
+    # 6. Scaling
+    df = scaler.transform(df)
 
-    # 7. RNN 입력 형태로 변환 (샘플 수, 시간 수, Feature 수)
-    df = df.reshape(1, SENSOR_WINDOW, len(sensor_rnn_features))
+    # 7. RNN 입력 형태로 변환(RNN은 3차원을 입력 받음)
+    # (샘플 수, 시간 수, Feature 수)
+    df = df.reshape(1, 30, 7)
 
-    # 8. 예측: 클래스별 확률 3개 (normal, warning, abnormal)
-    proba = sensor_rnn_model.predict(df, verbose=0)[0]
+    # 8. 예측
+    pred = sensor_rnn_model.predict(df, verbose=0)
 
-    # 9. 가장 높은 확률의 클래스를 상태로 선택
-    return {
-        "status": SENSOR_LABELS[int(proba.argmax())],
-        "normal_probability": round(float(proba[0]), 4),
-        "warning_probability": round(float(proba[1]), 4),
-        "abnormal_probability": round(float(proba[2]), 4)
-    }
+    # 9. 가장 높은 확률의 클래스 선택
+    class_index = np.argmax(pred[0])
+
+    labels = [
+        "normal",
+        "warning",
+        "abnormal"
+    ]
+
+    status = labels[class_index]
+
+    # 10. 결과 반환
+    return status

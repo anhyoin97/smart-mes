@@ -698,9 +698,7 @@ def api_create_line_sensor_reading(data: dict = Body(...)):
             temperature=float(data["temperature"]),
             vibration=float(data["vibration"]),
             current=float(data["current"]),
-            rpm=float(data["rpm"]),
-            # 시뮬레이터는 보내지 않음 -> AI가 예측. 직접 보내면 그 값을 그대로 저장
-            health_status=data.get("health_status")
+            rpm=float(data["rpm"])
         )
 
     except (KeyError, ValueError, TypeError):

@@ -650,8 +650,8 @@ def list_line_sensor_readings(line_id=None):
         """, (line_id, line_id)).fetchall()
 
     return [dict(row) for row in rows]
-    
-    
+
+
 # ============================================================
 # 생산라인 센서 데이터 등록
 # ============================================================
@@ -661,13 +661,8 @@ def create_line_sensor_reading(
     temperature,
     vibration,
     current,
-    rpm,
-    health_status=None
+    rpm
 ):
-
-    # 건전성 상태 검증 (상태를 직접 입력한 경우에만 해당)
-    if health_status is not None and health_status not in ("normal", "warning", "abnormal"):
-        raise ValueError("올바르지 않은 건전성 상태입니다.")
 
     with get_db_connection() as conn:
 
@@ -688,33 +683,22 @@ def create_line_sensor_reading(
                 temperature,
                 vibration,
                 current,
-                rpm,
-                health_status
+                rpm
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?)
         """, (
             line_id,
             temperature,
             vibration,
             current,
             rpm,
-            health_status
         ))
 
         conn.commit()
 
         reading_id = cursor.lastrowid
 
-        # 상태를 직접 입력한 경우(기존 방식)에는 AI 예측을 하지 않음
-        if health_status is not None:
-
-            return {
-                "reading_id": reading_id,
-                "prediction": None,
-                "prediction_message": "상태가 직접 입력되어 AI 예측을 수행하지 않았습니다."
-            }
-
-        # 최근 30건 조회 (방금 저장한 데이터 포함)
+        # 최근 30건 조회
         rows = conn.execute(
             """
             SELECT
@@ -726,52 +710,56 @@ def create_line_sensor_reading(
             WHERE line_id = ?
             ORDER BY measured_at DESC,
                      reading_id DESC
-            LIMIT ?
+            LIMIT 30
             """,
-            (line_id, ai_service.SENSOR_WINDOW)
+            (line_id,)
         ).fetchall()
 
         # RNN은 과거 -> 현재 순서로 학습했으므로 조회한 데이터를 뒤집어줌
-        rows = list(reversed(rows))
-
-        # 30건이 쌓이지 않았다면 예측하지 않음
-        if len(rows) < ai_service.SENSOR_WINDOW:
+        rows = list(
+            reversed(rows)
+        )
+        # 30건의 데이터가 쌓이지 않았다면
+        if len(rows) < 30:
 
             return {
                 "reading_id": reading_id,
                 "prediction": None,
-                "prediction_message": f"센서 데이터 수집 중 ({len(rows)}/{ai_service.SENSOR_WINDOW})"
+                "message": f"센서 데이터 수집 중 ({len(rows)}/30)"
             }
 
-        sensor_rows = [
-            [
+        # 30건이 있다면
+        sensor_rows = []
+
+        for row in rows:
+            sensor_rows.append([
                 row["temperature"],
                 row["vibration"],
                 row["current"],
                 row["rpm"]
-            ]
-            for row in rows
-        ]
+            ])
 
-        # AI 예측 호출 (최근 30분 -> 다음 1분의 설비 상태)
+        # AI 예측 호출
         prediction = ai_service.predict_sensor_status(
             line_id,
             sensor_rows
         )
 
         # 예측 결과를 DB에 저장
-        # 주의: 학습용 정답 컬럼(health_status)에 예측값이 저장되므로,
-        #       나중에 이 테이블로 재학습할 때는 예측값이 정답처럼 섞이지 않게 구분해야 함
         conn.execute(
             """
             UPDATE line_sensor_readings
             SET health_status = ?
             WHERE reading_id = ?
             """,
-            (prediction["status"], reading_id)
+            (
+                prediction,
+                reading_id
+            )
         )
 
         conn.commit()
+
 
         return {
             "reading_id": reading_id,
